@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>لعبة الغولف — طريقك نحو الحفرة الأخيرة</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@500;700;800;900&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg: #F5F1E4;
+    --bg-soft: #EDE7D4;
+    --ink: #1C2A1F;
+    --ink-soft: #4B5A4D;
+    --fairway: #1F4D36;
+    --fairway-2: #2E6B49;
+    --grass: #6E9A5A;
+    --grass-light: #A9C98E;
+    --sand: #D9C08D;
+    --sand-dark: #B79A5E;
+    --flag: #B23A48;
+    --flag-2: #8E2C38;
+    --gold: #C9A227;
+    --white: #FFFDF7;
+    --line: rgba(28,42,31,.14);
+    --shadow: 0 10px 30px rgba(28,42,31,.12);
+    --radius: 18px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(1200px 500px at 50% -10%, rgba(46,107,73,.10), transparent),
+      var(--bg);
+    color:var(--ink);
+    font-family:'Tajawal',sans-serif;
+    min-height:100vh;
+    line-height:1.6;
+  }
+  h1,h2,h3,.display{font-family:'Cairo',sans-serif;}
+  .app{max-width:960px;margin:0 auto;padding:28px 20px 90px;}
+
+  /* ===== Header / course progress ===== */
+  .course-header{
+    display:flex;flex-direction:column;gap:18px;margin-bottom:28px;
+  }
+  .brand{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+  .brand-title{font-weight:900;font-size:1.5rem;color:var(--fairway);display:flex;align-items:center;gap:10px;}
+  .brand-title .ball{width:14px;height:14px;border-radius:50%;background:radial-gradient(circle at 35% 30%, #fff, #dcd7c4 60%, #b9b39a);box-shadow:0 2px 4px rgba(0,0,0,.25);display:inline-block;}
+  .reset-btn{
+    background:none;border:1px solid var(--line);color:var(--ink-soft);
+    padding:8px 14px;border-radius:999px;font-family:'Tajawal';font-size:.82rem;cursor:pointer;
+    transition:.2s;
+  }
+  .reset-btn:hover{border-color:var(--flag);color:var(--flag);}
+
+  .fairway-track{position:relative;padding:10px 4px 26px;}
+  .fairway-line{
+    position:relative;height:6px;border-radius:6px;
+    background:linear-gradient(90deg, var(--fairway) 0%, var(--fairway) var(--prog,0%), var(--line) var(--prog,0%), var(--line) 100%);
+    overflow:visible;
+  }
+  .holes-row{display:flex;justify-content:space-between;margin-top:-3px;position:relative;}
+  .hole-stop{
+    display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;position:relative;
+  }
+  .hole-dot{
+    width:15px;height:15px;border-radius:50%;background:var(--white);border:2px solid var(--line);
+    z-index:2;transition:.25s;
+  }
+  .hole-stop.done .hole-dot{background:var(--fairway);border-color:var(--fairway);}
+  .hole-stop.current .hole-dot{background:var(--flag);border-color:var(--flag);box-shadow:0 0 0 5px rgba(178,58,72,.18);}
+  .hole-label{font-size:.68rem;color:var(--ink-soft);text-align:center;max-width:82px;}
+  .hole-stop.current .hole-label{color:var(--flag-2);font-weight:700;}
+  .hole-stop.done .hole-label{color:var(--fairway);}
+
+  /* ===== Cards / panels ===== */
+  .panel{
+    background:var(--white);border:1px solid var(--line);border-radius:var(--radius);
+    padding:28px;box-shadow:var(--shadow);margin-bottom:22px;
+  }
+  .panel h2{margin:0 0 6px;color:var(--fairway);font-size:1.4rem;font-weight:800;}
+  .panel .sub{color:var(--ink-soft);margin:0 0 20px;font-size:.95rem;}
+  .eyebrow{
+    display:inline-flex;align-items:center;gap:6px;background:var(--bg-soft);color:var(--fairway);
+    font-size:.75rem;font-weight:700;padding:4px 12px;border-radius:999px;margin-bottom:12px;
+  }
+
+  /* ===== intro ===== */
+  .hero{
+    background:linear-gradient(160deg, var(--fairway) 0%, var(--fairway-2) 55%, #244f38 100%);
+    color:var(--white);border-radius:var(--radius);padding:44px 32px;position:relative;overflow:hidden;
+    box-shadow:var(--shadow);margin-bottom:26px;
+  }
+  .hero::before{
+    content:"";position:absolute;inset:0;
+    background-image:radial-gradient(circle at 15% 110%, rgba(255,255,255,.06), transparent 40%),
+                      radial-gradient(circle at 85% -10%, rgba(255,255,255,.08), transparent 45%);
+  }
+  .hero-content{position:relative;z-index:1;max-width:600px;}
+  .hero h1{font-size:2.1rem;margin:0 0 14px;font-weight:900;line-height:1.3;}
+  .hero p{color:rgba(255,253,247,.85);font-size:1rem;margin:0 0 24px;}
+  .flag-icon{font-size:1.6rem;}
+  .cta-btn{
+    background:var(--flag);color:#fff;border:none;padding:14px 28px;border-radius:999px;
+    font-family:'Cairo';font-weight:800;font-size:1rem;cursor:pointer;transition:.2s;
+    box-shadow:0 8px 20px rgba(178,58,72,.35);
+  }
+  .cta-btn:hover{background:var(--flag-2);transform:translateY(-1px);}
+  .cta-btn:disabled{background:#B9B39A;box-shadow:none;cursor:not-allowed;transform:none;}
+  .cta-btn.secondary{background:var(--white);color:var(--fairway);box-shadow:none;border:1px solid var(--line);}
+  .cta-btn.secondary:hover{border-color:var(--fairway);}
+
+  .how-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:8px;}
+  .how-card{background:var(--bg-soft);border-radius:14px;padding:16px;text-align:center;}
+  .how-card .n{font-family:'Cairo';font-weight:900;color:var(--fairway);font-size:1.1rem;}
+  .how-card .t{font-size:.82rem;color:var(--ink-soft);margin-top:4px;}
+  @media(max-width:640px){.how-grid{grid-template-columns:1fr;}}
+
+  /* ===== setup: tag inputs ===== */
+  .category-block{margin-bottom:24px;}
+  .category-block:last-child{margin-bottom:0;}
+  .category-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+  .cat-icon{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;}
+  .cat-icon.passion{background:#F5DCE0;}
+  .cat-icon.skill{background:#DCEBDD;}
+  .cat-icon.hobby{background:#F3E7C8;}
+  .category-head h3{margin:0;font-size:1.02rem;}
+  .category-head p{margin:1px 0 0;font-size:.8rem;color:var(--ink-soft);}
+
+  .tag-input-row{display:flex;gap:8px;margin-bottom:10px;}
+  .tag-input-row input{
+    flex:1;padding:11px 14px;border-radius:10px;border:1px solid var(--line);
+    font-family:'Tajawal';font-size:.95rem;background:var(--bg);color:var(--ink);
+  }
+  .tag-input-row input:focus{outline:2px solid var(--fairway-2);outline-offset:1px;}
+  .add-btn{
+    background:var(--fairway);color:#fff;border:none;width:42px;border-radius:10px;font-size:1.2rem;cursor:pointer;
+    flex-shrink:0;transition:.2s;
+  }
+  .add-btn:hover{background:var(--fairway-2);}
+  .chip-row{display:flex;flex-wrap:wrap;gap:8px;min-height:6px;}
+  .chip{
+    background:var(--bg-soft);border:1px solid var(--line);border-radius:999px;padding:6px 8px 6px 14px;
+    font-size:.86rem;display:flex;align-items:center;gap:8px;
+  }
+  .chip button{
+    background:none;border:none;color:var(--ink-soft);cursor:pointer;font-size:1rem;line-height:1;
+    width:20px;height:20px;border-radius:50%;
+  }
+  .chip button:hover{background:rgba(178,58,72,.15);color:var(--flag-2);}
+  .empty-hint{color:var(--ink-soft);font-size:.82rem;font-style:normal;}
+
+  /* ===== expansion cards ===== */
+  .expand-phase-title{
+    display:flex;align-items:center;gap:8px;font-family:'Cairo';font-weight:800;color:var(--fairway);
+    font-size:1rem;margin:26px 0 12px;
+  }
+  .expand-phase-title:first-child{margin-top:0;}
+  .expand-card{
+    border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:12px;background:var(--bg);
+  }
+  .expand-card .q{font-weight:700;font-size:.95rem;margin-bottom:10px;}
+  .expand-card .q b{color:var(--fairway);}
+
+  /* ===== circle stage ===== */
+  .circle-wrap{display:flex;flex-direction:column;align-items:center;gap:6px;margin-bottom:10px;}
+  .stat-row{display:flex;gap:18px;justify-content:center;margin:6px 0 20px;flex-wrap:wrap;}
+  .stat{text-align:center;}
+  .stat .num{font-family:'Cairo';font-weight:900;font-size:1.3rem;}
+  .stat .lbl{font-size:.75rem;color:var(--ink-soft);}
+  .stat.kept .num{color:var(--fairway);}
+  .stat.elim .num{color:var(--sand-dark);}
+  .stat.pending .num{color:var(--flag-2);}
+
+  .item-list{display:flex;flex-direction:column;gap:10px;}
+  .item-row{
+    border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:flex;align-items:flex-start;gap:12px;
+    background:var(--white);transition:.2s;
+  }
+  .item-row.kept{border-color:var(--fairway-2);background:#F1F7F2;}
+  .item-row.eliminated{border-color:var(--sand-dark);background:#F7F2E4;opacity:.75;}
+  .pin{
+    width:26px;height:26px;border-radius:50%;flex-shrink:0;margin-top:2px;
+    display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:800;color:#fff;
+    background:var(--flag);
+  }
+  .item-row.kept .pin{background:var(--fairway);}
+  .item-row.eliminated .pin{background:var(--sand-dark);}
+  .item-body{flex:1;min-width:0;}
+  .item-text{font-weight:700;font-size:.98rem;word-break:break-word;}
+  .item-text.strike{text-decoration:line-through;color:var(--ink-soft);}
+  .item-meta{font-size:.75rem;color:var(--ink-soft);margin-top:2px;}
+  .item-note-input{
+    width:100%;margin-top:8px;padding:8px 10px;border-radius:8px;border:1px solid var(--line);
+    font-family:'Tajawal';font-size:.82rem;resize:vertical;min-height:36px;background:var(--bg);
+  }
+  .item-actions{display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;}
+  .mini-btn{
+    border:1px solid var(--line);background:var(--white);padding:7px 12px;border-radius:8px;font-size:.78rem;
+    cursor:pointer;font-family:'Tajawal';font-weight:700;transition:.15s;white-space:nowrap;
+  }
+  .mini-btn.keep:hover{border-color:var(--fairway);color:var(--fairway);}
+  .mini-btn.drop:hover{border-color:var(--sand-dark);color:var(--sand-dark);}
+  .mini-btn.undo:hover{border-color:var(--ink-soft);}
+  .mini-btn.active-keep{background:var(--fairway);color:#fff;border-color:var(--fairway);}
+  .mini-btn.active-drop{background:var(--sand-dark);color:#fff;border-color:var(--sand-dark);}
+
+  /* refine actions per kept item */
+  .kept-actions{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;}
+  .tag-btn{
+    border:1px dashed var(--line);background:none;padding:6px 12px;border-radius:999px;font-size:.76rem;
+    cursor:pointer;font-family:'Tajawal';color:var(--ink-soft);transition:.15s;
+  }
+  .tag-btn:hover{border-color:var(--fairway);color:var(--fairway);}
+  .tag-btn.on{background:var(--fairway);border-color:var(--fairway);color:#fff;}
+
+  /* ===== scorecard / final ===== */
+  .scorecard{width:100%;border-collapse:collapse;margin:14px 0;font-size:.88rem;}
+  .scorecard th,.scorecard td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:center;}
+  .scorecard th{color:var(--fairway);font-family:'Cairo';font-weight:800;background:var(--bg-soft);}
+  .scorecard td:first-child,.scorecard th:first-child{text-align:right;}
+
+  .final-flag{
+    text-align:center;padding:20px 10px 8px;
+  }
+  .final-flag .ic{font-size:2.6rem;}
+  .goal-card{
+    background:linear-gradient(160deg, var(--fairway) 0%, var(--fairway-2) 100%);color:#fff;
+    border-radius:16px;padding:26px;text-align:center;margin:16px 0;box-shadow:var(--shadow);
+  }
+  .goal-card .lbl{font-size:.8rem;opacity:.85;margin-bottom:6px;}
+  .goal-card .txt{font-family:'Cairo';font-weight:900;font-size:1.5rem;}
+  .candidate-pick{display:flex;flex-direction:column;gap:10px;}
+  .candidate-opt{
+    border:2px solid var(--line);border-radius:12px;padding:14px 16px;cursor:pointer;text-align:right;
+    background:var(--white);font-family:'Tajawal';font-size:.95rem;font-weight:700;transition:.15s;
+  }
+  .candidate-opt:hover{border-color:var(--fairway-2);}
+  .candidate-opt.picked{border-color:var(--fairway);background:#F1F7F2;}
+
+  .nav-row{display:flex;justify-content:space-between;gap:10px;margin-top:6px;flex-wrap:wrap;}
+  .nav-row .spacer{flex:1;}
+
+  .toast{
+    position:fixed;bottom:22px;right:50%;transform:translateX(50%);background:var(--ink);color:#fff;
+    padding:12px 22px;border-radius:999px;font-size:.85rem;box-shadow:var(--shadow);opacity:0;
+    pointer-events:none;transition:.3s;z-index:50;
+  }
+  .toast.show{opacity:1;transform:translateX(50%) translateY(-6px);}
+
+  .round-banner{
+    display:flex;align-items:center;gap:10px;background:var(--bg-soft);border-radius:12px;
+    padding:10px 16px;margin-bottom:18px;font-size:.85rem;color:var(--ink-soft);
+  }
+  .round-banner b{color:var(--fairway);}
+
+  .footer-note{text-align:center;color:var(--ink-soft);font-size:.78rem;margin-top:30px;}
+
+  /* ===== resume-code badge ===== */
+  .code-bar{
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--white);
+    border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:.82rem;
+  }
+  .code-bar .lbl{color:var(--ink-soft);}
+  .code-bar .code{
+    font-family:'Cairo';font-weight:900;letter-spacing:2px;color:var(--fairway);
+    background:var(--bg-soft);padding:4px 12px;border-radius:8px;font-size:.95rem;
+  }
+  .code-bar button{
+    background:none;border:1px solid var(--line);color:var(--ink-soft);padding:5px 11px;
+    border-radius:8px;font-size:.75rem;cursor:pointer;font-family:'Tajawal';
+  }
+  .code-bar button:hover{border-color:var(--fairway);color:var(--fairway);}
+  .sync-dot{width:8px;height:8px;border-radius:50%;background:var(--sand-dark);flex-shrink:0;transition:.3s;}
+  .sync-dot.ok{background:var(--fairway);}
+  .sync-dot.err{background:var(--flag);}
+  .config-warning{
+    background:#FDECEC;border:1px solid #E7B8B8;color:#8E2C38;padding:14px 18px;border-radius:12px;
+    font-size:.85rem;margin-bottom:20px;
+  }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* =========================================================
+   لعبة الغولف — أداة اكتشاف الهدف النهائي
+   ========================================================= */
+
+/* ---------- إعداد Supabase ----------
+   استبدل القيمتين التاليتين ببيانات مشروعك على supabase.com
+   (Project Settings → API) */
+const SUPABASE_URL = 'https://btsneasynrkmmxdtbvma.supabase.co';       // مثال: https://xxxxx.supabase.co
+const SUPABASE_ANON_KEY = 'sb_publishable_6cypM73LDSGDMcdTXZN84w_XHMhjwZ4';
+const TABLE_NAME = 'golf_sessions';
+
+let sb = null;
+let configOk = SUPABASE_URL.startsWith('http') && SUPABASE_ANON_KEY.length > 10;
+if(configOk){
+  sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+}
+
+let syncStatus = 'idle'; // idle | saving | ok | err
+
+const HOLES = [
+  {key:'intro',   label:'البداية'},
+  {key:'setup',   label:'المدخلات'},
+  {key:'expand',  label:'التوسيع'},
+  {key:'circle',  label:'الدائرة'},
+  {key:'refine',  label:'التنقية'},
+  {key:'final',   label:'الحفرة الأخيرة'},
+];
+
+let state = {
+  stage:'intro',
+  passions:[], skills:[], hobbies:[],
+  hobbyQualities:{},         // hobby -> [qualities]
+  expansionAnswers:{},       // sourceLabel -> [fields]   (phase1: passions+skills, phase2: qualities)
+  rounds:[],                 // [{id, seedLabel, items:[{id,text,status,note}]}]
+  currentRound:0,
+  finalCandidates:[],        // [{id,text}]
+  finalGoalId:null,
+};
+
+let uidCounter = 1;
+function uid(){ return 'i'+(uidCounter++)+'-'+Math.random().toString(36).slice(2,7); }
+
+/* ---------- المصادقة عبر الرابط السحري (Magic Link) ---------- */
+let currentUser = null;   // كائن المستخدم بعد تسجيل الدخول
+let authView = 'checking'; // checking | login | sent | ready
+let loginEmail = '';
+
+async function initAuth(){
+  if(!configOk){ render(); return; }
+
+  const { data: { session } } = await sb.auth.getSession();
+  if(session && session.user){
+    currentUser = session.user;
+    authView = 'ready';
+    await loadState();
+  } else {
+    authView = 'login';
+    render();
+  }
+
+  sb.auth.onAuthStateChange(async (event, session)=>{
+    if(event === 'SIGNED_IN' && session){
+      currentUser = session.user;
+      authView = 'ready';
+      await loadState();
+    } else if(event === 'SIGNED_OUT'){
+      currentUser = null;
+      authView = 'login';
+      state = { stage:'intro', passions:[], skills:[], hobbies:[],
+        hobbyQualities:{}, expansionAnswers:{}, rounds:[], currentRound:0,
+        finalCandidates:[], finalGoalId:null };
+      render();
+    }
+  });
+}
+
+async function sendMagicLink(email){
+  syncStatus = 'saving';
+  try{
+    const { error } = await sb.auth.signInWithOtp({
+      email,
+      options:{ emailRedirectTo: window.location.href }
+    });
+    if(error) throw error;
+    authView = 'sent';
+    syncStatus = 'ok';
+  }catch(e){
+    console.warn('magic link failed', e);
+    showToast('تعذّر إرسال الرابط، تحقق من البريد وحاول مجددًا');
+    syncStatus = 'err';
+  }
+  render();
+}
+
+async function signOutUser(){
+  if(!confirm('تسجيل الخروج؟ يمكنك العودة لاحقًا بنفس البريد.')) return;
+  await sb.auth.signOut();
+}
+
+/* ---------- persistence عبر Supabase (مربوطة بحساب المستخدم) ---------- */
+async function saveState(){
+  if(!configOk || !currentUser){ return; }
+  syncStatus = 'saving'; updateSyncDot();
+  try{
+    const { error } = await sb.from(TABLE_NAME).upsert({
+      user_id: currentUser.id,
+      data: state,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'user_id' });
+    if(error) throw error;
+    syncStatus = 'ok';
+  }catch(e){
+    console.warn('save failed', e);
+    syncStatus = 'err';
+  }
+  updateSyncDot();
+}
+
+async function loadState(){
+  if(!configOk || !currentUser){ render(); return; }
+  try{
+    const { data, error } = await sb.from(TABLE_NAME).select('data').eq('user_id', currentUser.id).maybeSingle();
+    if(error) throw error;
+    if(data && data.data){ state = Object.assign(state, data.data); }
+    syncStatus = 'ok';
+  }catch(e){
+    console.warn('load failed', e);
+    syncStatus = 'err';
+  }
+  render();
+}
+
+async function resetAll(){
+  if(!confirm('هل تريد بدء جولة جديدة؟ سيتم حذف كل ما أدخلته حتى الآن.')) return;
+  state = {
+    stage:'intro', passions:[], skills:[], hobbies:[],
+    hobbyQualities:{}, expansionAnswers:{}, rounds:[], currentRound:0,
+    finalCandidates:[], finalGoalId:null,
+  };
+  saveState();
+  render();
+}
+
+function updateSyncDot(){
+  const dot = document.getElementById('syncDot');
+  if(!dot) return;
+  dot.className = 'sync-dot' + (syncStatus==='ok'?' ok':syncStatus==='err'?' err':'');
+}
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 1800);
+}
+
+/* ---------- render root ---------- */
+function render(){
+  const app = document.getElementById('app');
+  if(configOk && authView !== 'ready'){
+    app.innerHTML = authHeader() + loginView();
+    attachAuthHandlers();
+    return;
+  }
+  app.innerHTML = header() + body();
+  attachHandlers();
+}
+
+function progressPercent(){
+  const idx = HOLES.findIndex(h=>h.key===state.stage);
+  return Math.round((idx/(HOLES.length-1))*100);
+}
+
+function header(){
+  const idx = HOLES.findIndex(h=>h.key===state.stage);
+  const holesHtml = HOLES.map((h,i)=>{
+    const cls = i<idx?'done':(i===idx?'current':'');
+    return `<div class="hole-stop ${cls}"><div class="hole-dot"></div><div class="hole-label">${h.label}</div></div>`;
+  }).join('');
+
+  const warning = !configOk ? `
+    <div class="config-warning">
+      ⚠️ لم يتم ربط قاعدة البيانات بعد — تقدّمك لن يُحفَظ بشكل دائم. راجع تعليمات الإعداد في ملف README.
+    </div>` : '';
+
+  const accountBar = (configOk && currentUser) ? `
+    <div class="code-bar">
+      <div class="sync-dot" id="syncDot"></div>
+      <span class="lbl">مسجّل الدخول بالبريد:</span>
+      <span class="code" style="letter-spacing:0">${escapeHtml(currentUser.email)}</span>
+      <button id="signOutBtn">تسجيل الخروج</button>
+    </div>` : '';
+
+  return `
+  <div class="course-header">
+    <div class="brand">
+      <div class="brand-title"><span class="ball"></span> لعبة الغولف — البحث عن هدفك</div>
+      <button class="reset-btn" id="resetBtn">جولة جديدة ↺</button>
+    </div>
+    ${warning}
+    ${accountBar}
+    <div class="fairway-track">
+      <div class="fairway-line" style="--prog:${progressPercent()}%"></div>
+      <div class="holes-row">${holesHtml}</div>
+    </div>
+  </div>`;
+}
+
+/* ================= AUTH SCREENS ================= */
+function authHeader(){
+  return `
+  <div class="course-header">
+    <div class="brand">
+      <div class="brand-title"><span class="ball"></span> لعبة الغولف — البحث عن هدفك</div>
+    </div>
+  </div>`;
+}
+
+function loginView(){
+  if(authView === 'sent'){
+    return `
+    <div class="hero">
+      <div class="hero-content">
+        <div class="flag-icon">📩</div>
+        <h1>تفقّد بريدك</h1>
+        <p>أرسلنا رابط دخول إلى <b>${escapeHtml(loginEmail)}</b>. افتح الرابط من نفس الجهاز لبدء أو متابعة جولتك.</p>
+        <button class="cta-btn secondary" id="backToLoginBtn">استخدام بريد آخر</button>
+      </div>
+    </div>`;
+  }
+  return `
+  <div class="hero">
+    <div class="hero-content">
+      <div class="flag-icon">⛳</div>
+      <h1>حدّد هدفك النهائي، حفرة بعد حفرة</h1>
+      <p>سجّل الدخول ببريدك لحفظ مسارك ومتابعته من أي جهاز — بدون كلمة مرور.</p>
+      <div class="tag-input-row" style="max-width:360px">
+        <input id="loginEmailInput" type="email" placeholder="بريدك الإلكتروني" />
+        <button class="add-btn" id="sendLinkBtn">↵</button>
+      </div>
+      <button class="cta-btn" id="sendLinkBtn2" style="margin-top:12px">أرسل رابط الدخول</button>
+    </div>
+  </div>`;
+}
+
+function attachAuthHandlers(){
+  const send = ()=>{
+    const input = document.getElementById('loginEmailInput');
+    const val = input.value.trim();
+    if(!val || !val.includes('@')){ showToast('أدخل بريدًا إلكترونيًا صحيحًا'); return; }
+    loginEmail = val;
+    sendMagicLink(val);
+  };
+  const btn1 = document.getElementById('sendLinkBtn');
+  if(btn1) btn1.onclick = send;
+  const btn2 = document.getElementById('sendLinkBtn2');
+  if(btn2) btn2.onclick = send;
+  const input = document.getElementById('loginEmailInput');
+  if(input) input.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); send(); } });
+  const back = document.getElementById('backToLoginBtn');
+  if(back) back.onclick = ()=>{ authView='login'; render(); };
+}
+
+function body(){
+  switch(state.stage){
+    case 'intro': return introView();
+    case 'setup': return setupView();
+    case 'expand': return expandView();
+    case 'circle': return circleView();
+    case 'refine': return refineView();
+    case 'final': return finalView();
+    default: return introView();
+  }
+}
+
+/* ================= INTRO ================= */
+function introView(){
+  return `
+  <div class="hero">
+    <div class="hero-content">
+      <div class="flag-icon">⛳</div>
+      <h1>حدّد هدفك النهائي، حفرة بعد حفرة</h1>
+      <p>استراتيجية "لعبة الغولف" تساعدك على تحويل شغفك ومهاراتك وهواياتك إلى مجالات واضحة، ثم تنقيتها تدريجيًا حتى تصل إلى هدف واحد نهائي — تمامًا كضربات الغولف التي تقترب أكثر فأكثر من الحفرة.</p>
+      <button class="cta-btn" id="startBtn">ابدأ الجولة ⛳</button>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="eyebrow">كيف تعمل اللعبة</div>
+    <h2>أربع مراحل حتى الحفرة الأخيرة</h2>
+    <p class="sub">في كل مرحلة تقترب أكثر من هدفك، وتستطيع دائمًا الرجوع خطوة للخلف.</p>
+    <div class="how-grid">
+      <div class="how-card"><div class="n">١</div><div class="t">اكتب شغفك، ومهاراتك، وهواياتك في ثلاث قوائم منفصلة</div></div>
+      <div class="how-card"><div class="n">٢</div><div class="t">وسّع كل عنصر بسؤال: ما المجالات التي فيها هذا الشغف أو المهارة؟</div></div>
+      <div class="how-card"><div class="n">٣</div><div class="t">ضع كل الإجابات في "الدائرة"، وابحث عن كل مجال لتقرر إن كان يناسبك</div></div>
+      <div class="how-card"><div class="n">٤</div><div class="t">احذف ما لا يناسبك، وضيّق أكثر، وكرّر حتى تصل لهدف واحد</div></div>
+    </div>
+  </div>`;
+}
+
+/* ================= SETUP ================= */
+function chipListHtml(list, group){
+  if(!list.length) return `<div class="empty-hint">لم تُضِف شيئًا بعد</div>`;
+  return `<div class="chip-row">${list.map((v,i)=>`
+    <div class="chip">${escapeHtml(v)}<button data-group="${group}" data-idx="${i}" class="rm-chip">×</button></div>
+  `).join('')}</div>`;
+}
+
+function setupView(){
+  const total = state.passions.length + state.skills.length + state.hobbies.length;
+  return `
+  <div class="panel">
+    <div class="eyebrow">الحفرة ١</div>
+    <h2>ما شغفك، ومهاراتك، وهواياتك؟</h2>
+    <p class="sub">أضف عدة عناصر لكل قائمة. لا حاجة للكمال الآن — يمكنك التعديل لاحقًا.</p>
+
+    <div class="category-block">
+      <div class="category-head">
+        <div class="cat-icon passion">🔥</div>
+        <div><h3>الشغف</h3><p>الأشياء التي تحمّسك وتشعر تجاهها بحماس حقيقي</p></div>
+      </div>
+      <div class="tag-input-row">
+        <input id="in-passion" placeholder="مثال: الكتابة، مساعدة الناس، التصميم" />
+        <button class="add-btn" data-group="passions">+</button>
+      </div>
+      ${chipListHtml(state.passions,'passions')}
+    </div>
+
+    <div class="category-block">
+      <div class="category-head">
+        <div class="cat-icon skill">🛠️</div>
+        <div><h3>القدرات والمهارات</h3><p>ما تُتقنه فعلًا أو تتعلمه بسرعة أكبر من غيرك</p></div>
+      </div>
+      <div class="tag-input-row">
+        <input id="in-skill" placeholder="مثال: التنظيم، البرمجة، الإقناع" />
+        <button class="add-btn" data-group="skills">+</button>
+      </div>
+      ${chipListHtml(state.skills,'skills')}
+    </div>
+
+    <div class="category-block">
+      <div class="category-head">
+        <div class="cat-icon hobby">🎯</div>
+        <div><h3>الهوايات</h3><p>ما تفعله لأجل المتعة وحدها</p></div>
+      </div>
+      <div class="tag-input-row">
+        <input id="in-hobby" placeholder="مثال: القراءة، كرة القدم، الطبخ" />
+        <button class="add-btn" data-group="hobbies">+</button>
+      </div>
+      ${chipListHtml(state.hobbies,'hobbies')}
+    </div>
+
+    <div class="nav-row">
+      <button class="cta-btn secondary" id="backBtn">رجوع</button>
+      <div class="spacer"></div>
+      <button class="cta-btn" id="nextBtn" ${total===0?'disabled':''}>التالي: التوسيع →</button>
+    </div>
+  </div>`;
+}
+
+/* ================= EXPAND ================= */
+// phase1: passions+skills -> "ما هي المجالات التي فيها X؟"
+// phase1b: hobbies -> "ما هي الصفات التي أحبها في X؟"
+// phase2: each collected quality -> "ما هي المجالات التي فيها X؟" (only shown once qualities exist)
+
+function expandView(){
+  const phase1Items = [...state.passions.map(p=>({label:p,type:'شغف'})), ...state.skills.map(s=>({label:s,type:'مهارة'}))];
+  const hobbyItems = state.hobbies;
+
+  const allQualities = [];
+  Object.values(state.hobbyQualities).forEach(arr=>allQualities.push(...arr));
+  const uniqueQualities = [...new Set(allQualities)];
+
+  let html = `<div class="panel">
+    <div class="eyebrow">الحفرة ٢</div>
+    <h2>وسّع كل عنصر إلى مجالات</h2>
+    <p class="sub">أجب عن الأسئلة أدناه بكل ما يخطر ببالك — لا تُفلتر نفسك الآن، الفلترة تأتي في الدائرة.</p>`;
+
+  html += `<div class="expand-phase-title">🔥 الشغف والمهارات: ما المجالات التي فيها هذا؟</div>`;
+  phase1Items.forEach(({label,type})=>{
+    const answers = state.expansionAnswers[label] || [];
+    html += `
+    <div class="expand-card">
+      <div class="q">ما هي المجالات التي فيها <b>${escapeHtml(label)}</b>؟ <span style="color:var(--ink-soft);font-weight:400">(${type})</span></div>
+      <div class="tag-input-row">
+        <input class="exp-input" data-key="${escapeAttr(label)}" placeholder="اكتب مجالًا واضغط إضافة" />
+        <button class="add-btn exp-add" data-key="${escapeAttr(label)}">+</button>
+      </div>
+      ${chipListHtml(answers, 'exp:'+label)}
+    </div>`;
+  });
+
+  html += `<div class="expand-phase-title">🎯 الهوايات: ما الصفات التي تحبها فيها؟</div>`;
+  hobbyItems.forEach(hobby=>{
+    const quals = state.hobbyQualities[hobby] || [];
+    html += `
+    <div class="expand-card">
+      <div class="q">ما هي الصفات التي أحبها في <b>${escapeHtml(hobby)}</b>؟</div>
+      <div class="tag-input-row">
+        <input class="qual-input" data-key="${escapeAttr(hobby)}" placeholder="اكتب صفة واضغط إضافة" />
+        <button class="add-btn qual-add" data-key="${escapeAttr(hobby)}">+</button>
+      </div>
+      ${chipListHtml(quals, 'qual:'+hobby)}
+    </div>`;
+  });
+
+  if(uniqueQualities.length){
+    html += `<div class="expand-phase-title">↩️ والآن أعِد السؤال الأول على هذه الصفات</div>`;
+    uniqueQualities.forEach(q=>{
+      const answers = state.expansionAnswers[q] || [];
+      html += `
+      <div class="expand-card">
+        <div class="q">ما هي المجالات التي فيها <b>${escapeHtml(q)}</b>؟</div>
+        <div class="tag-input-row">
+          <input class="exp-input" data-key="${escapeAttr(q)}" placeholder="اكتب مجالًا واضغط إضافة" />
+          <button class="add-btn exp-add" data-key="${escapeAttr(q)}">+</button>
+        </div>
+        ${chipListHtml(answers, 'exp:'+q)}
+      </div>`;
+    });
+  } else if(hobbyItems.length){
+    html += `<p class="sub" style="margin-top:10px">بعد إضافة صفات للهوايات، ستظهر هنا أسئلة جديدة تلقائيًا.</p>`;
+  }
+
+  const poolCount = buildPool().length;
+  html += `
+    <div class="nav-row">
+      <button class="cta-btn secondary" id="backBtn">رجوع</button>
+      <div class="spacer"></div>
+      <button class="cta-btn" id="nextBtn" ${poolCount===0?'disabled':''}>التالي: الدائرة (${poolCount} عنصرًا) →</button>
+    </div>
+  </div>`;
+  return html;
+}
+
+function buildPool(){
+  // unique list of all "field" answers gathered so far (phase1 + phase2), excluding raw hobby qualities themselves
+  const set = new Set();
+  Object.entries(state.expansionAnswers).forEach(([key, arr])=>{
+    arr.forEach(v=>{ if(v && v.trim()) set.add(v.trim()); });
+  });
+  return [...set];
+}
+
+/* ================= CIRCLE (round 1 build) ================= */
+function circleView(){
+  // if we don't have a round yet for currentRound, build it
+  if(!state.rounds[state.currentRound]){
+    const seedLabel = state.currentRound===0 ? 'المجموعة الأولى من الشغف والمهارات والهوايات' : 'العناصر المتبقية من الجولة السابقة';
+    const items = buildPool().map(text=>({id:uid(), text, status:'pending', note:''}));
+    state.rounds[state.currentRound] = {id:uid(), seedLabel, items};
+  }
+  const round = state.rounds[state.currentRound];
+  const kept = round.items.filter(i=>i.status==='kept').length;
+  const elim = round.items.filter(i=>i.status==='eliminated').length;
+  const pending = round.items.length - kept - elim;
+
+  return `
+  <div class="panel">
+    <div class="eyebrow">الحفرة ٣ ${state.currentRound>0? ' — جولة '+(state.currentRound+1):''}</div>
+    <h2>الدائرة: كل المجالات المحتملة</h2>
+    <p class="sub">ابحث عن كل مجال في القائمة، ثم قرّر: هل يناسبك أم لا؟ يمكنك ترك عناصر معلّقة والعودة إليها لاحقًا.</p>
+
+    <div class="stat-row">
+      <div class="stat pending"><div class="num">${pending}</div><div class="lbl">قيد البحث</div></div>
+      <div class="stat kept"><div class="num">${kept}</div><div class="lbl">تناسبني</div></div>
+      <div class="stat elim"><div class="num">${elim}</div><div class="lbl">مستبعدة</div></div>
+    </div>
+
+    <div class="item-list">
+      ${round.items.map((item, idx)=>circleItemRow(item, idx)).join('')}
+    </div>
+
+    <div class="nav-row" style="margin-top:20px">
+      <button class="cta-btn secondary" id="backBtn">رجوع</button>
+      <div class="spacer"></div>
+      <button class="cta-btn" id="nextBtn" ${kept===0?'disabled':''}>التالي: التنقية (${kept} تناسبني) →</button>
+    </div>
+  </div>`;
+}
+
+function circleItemRow(item, idx){
+  const statusClass = item.status==='kept'?'kept':(item.status==='eliminated'?'eliminated':'');
+  const strike = item.status==='eliminated'?'strike':'';
+  return `
+  <div class="item-row ${statusClass}" data-id="${item.id}">
+    <div class="pin">${idx+1}</div>
+    <div class="item-body">
+      <div class="item-text ${strike}">${escapeHtml(item.text)}</div>
+      ${item.status!=='pending' ? `<div class="item-meta">${item.status==='kept'?'✔ تناسبك':'✕ مستبعدة'}</div>`:''}
+      <textarea class="item-note-input note-input" data-id="${item.id}" placeholder="سجّل ملاحظة بحثك هنا (اختياري)...">${escapeHtml(item.note||'')}</textarea>
+    </div>
+    <div class="item-actions">
+      <button class="mini-btn keep ${item.status==='kept'?'active-keep':''}" data-id="${item.id}" data-action="kept">تناسبني</button>
+      <button class="mini-btn drop ${item.status==='eliminated'?'active-drop':''}" data-id="${item.id}" data-action="eliminated">استبعاد</button>
+      ${item.status!=='pending'?`<button class="mini-btn undo" data-id="${item.id}" data-action="pending">تراجع</button>`:''}
+    </div>
+  </div>`;
+}
+
+/* ================= REFINE ================= */
+function refineView(){
+  const round = state.rounds[state.currentRound];
+  const kept = round.items.filter(i=>i.status==='kept');
+
+  let html = `
+  <div class="panel">
+    <div class="eyebrow">الحفرة ٤</div>
+    <h2>ماذا تفعل بالعناصر المتبقية؟</h2>
+    <p class="sub">لكل عنصر تناسبك: إمّا ضيّقه أكثر بجولة توسيع جديدة، أو رشّحه مباشرة كهدف نهائي محتمل.</p>
+    <div class="candidate-pick">`;
+
+  kept.forEach(item=>{
+    const isCandidate = state.finalCandidates.some(c=>c.sourceId===item.id);
+    html += `
+    <div class="item-row kept" data-id="${item.id}">
+      <div class="pin">✔</div>
+      <div class="item-body">
+        <div class="item-text">${escapeHtml(item.text)}</div>
+        ${item.note?`<div class="item-meta">${escapeHtml(item.note)}</div>`:''}
+        <div class="kept-actions">
+          <button class="tag-btn expand-more" data-id="${item.id}">وسّع أكثر ↺</button>
+          <button class="tag-btn ${isCandidate?'on':''} mark-final" data-id="${item.id}">${isCandidate?'✔ مُرشَّح كهدف نهائي':'رشّحه كهدف نهائي'}</button>
+        </div>
+      </div>
+    </div>`;
+  });
+
+  html += `</div>`;
+
+  const nextDisabled = state.finalCandidates.length===0 && true; // allow going forward only if there's at least one candidate OR they choose to expand further
+
+  html += `
+    <div class="nav-row" style="margin-top:22px">
+      <button class="cta-btn secondary" id="backBtn">رجوع للدائرة</button>
+      <div class="spacer"></div>
+      <button class="cta-btn" id="toFinalBtn" ${state.finalCandidates.length===0?'disabled':''}>الذهاب للحفرة الأخيرة (${state.finalCandidates.length} مرشّح) →</button>
+    </div>
+    <p class="footer-note" style="margin-top:14px">لم ترشّح أي عنصر بعد؟ اضغط "وسّع أكثر" على عنصر لبدء جولة توسيع وتنقية جديدة حوله فقط.</p>
+  </div>`;
+  return html;
+}
+
+/* ================= FINAL ================= */
+function finalView(){
+  const chosen = state.finalCandidates.find(c=>c.id===state.finalGoalId);
+
+  let html = `<div class="panel">
+    <div class="eyebrow">الحفرة الأخيرة</div>
+    <h2>هدفك النهائي</h2>`;
+
+  if(!chosen){
+    html += `<p class="sub">اخترت ${state.finalCandidates.length} مرشّحًا حتى الآن. اختر واحدًا ليكون هدفك النهائي، أو ارجع لتضيف/تستبعد المزيد.</p>
+    <div class="candidate-pick">
+      ${state.finalCandidates.map(c=>`
+        <div class="candidate-opt" data-id="${c.id}">⛳ ${escapeHtml(c.text)}</div>
+      `).join('')}
+    </div>`;
+  } else {
+    html += `
+    <div class="final-flag"><div class="ic">🏆</div></div>
+    <div class="goal-card">
+      <div class="lbl">هدفك النهائي هو</div>
+      <div class="txt">${escapeHtml(chosen.text)}</div>
+    </div>
+    <p class="sub" style="text-align:center">وصلت إلى الحفرة الأخيرة بعد ${state.rounds.length} جولة من التوسيع والتنقية. يمكنك دائمًا العودة والمراجعة إن تغيّرت الأمور.</p>
+    <button class="cta-btn secondary" id="unpickBtn" style="display:block;margin:0 auto">اختيار مرشّح آخر</button>
+    `;
+  }
+
+  html += journeyScorecard();
+
+  html += `
+    <div class="nav-row" style="margin-top:22px">
+      <button class="cta-btn secondary" id="backBtn">رجوع للتنقية</button>
+      <div class="spacer"></div>
+      <button class="cta-btn secondary" id="resetBtn2">بدء جولة جديدة ↺</button>
+    </div>
+  </div>`;
+  return html;
+}
+
+function journeyScorecard(){
+  let rows = state.rounds.map((r,i)=>{
+    const kept = r.items.filter(x=>x.status==='kept').length;
+    const elim = r.items.filter(x=>x.status==='eliminated').length;
+    return `<tr><td>جولة ${i+1}</td><td>${r.items.length}</td><td>${kept}</td><td>${elim}</td></tr>`;
+  }).join('');
+  return `
+  <table class="scorecard">
+    <thead><tr><th>الجولة</th><th>إجمالي العناصر</th><th>ناسبني</th><th>مستبعدة</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+/* ================= helpers ================= */
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function escapeAttr(s){ return escapeHtml(s).replace(/"/g,'&quot;'); }
+
+/* ================= event wiring ================= */
+function attachHandlers(){
+  const resetBtn = document.getElementById('resetBtn');
+  if(resetBtn) resetBtn.onclick = resetAll;
+  const resetBtn2 = document.getElementById('resetBtn2');
+  if(resetBtn2) resetBtn2.onclick = resetAll;
+
+  const signOutBtn = document.getElementById('signOutBtn');
+  if(signOutBtn) signOutBtn.onclick = signOutUser;
+  updateSyncDot();
+
+  const startBtn = document.getElementById('startBtn');
+  if(startBtn) startBtn.onclick = ()=>{ state.stage='setup'; saveState(); render(); };
+
+  const backBtn = document.getElementById('backBtn');
+  if(backBtn) backBtn.onclick = goBack;
+
+  const nextBtn = document.getElementById('nextBtn');
+  if(nextBtn) nextBtn.onclick = goNext;
+
+  const toFinalBtn = document.getElementById('toFinalBtn');
+  if(toFinalBtn) toFinalBtn.onclick = ()=>{ state.stage='final'; saveState(); render(); };
+
+  const unpickBtn = document.getElementById('unpickBtn');
+  if(unpickBtn) unpickBtn.onclick = ()=>{ state.finalGoalId=null; saveState(); render(); };
+
+  // setup stage: add chip
+  document.querySelectorAll('.add-btn[data-group]').forEach(btn=>{
+    btn.onclick = ()=>{
+      const group = btn.dataset.group;
+      const input = document.getElementById('in-'+ (group==='passions'?'passion':group==='skills'?'skill':'hobby'));
+      const val = input.value.trim();
+      if(!val) return;
+      state[group].push(val);
+      input.value='';
+      saveState(); render();
+    };
+  });
+  ['in-passion','in-skill','in-hobby'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.addEventListener('keydown', e=>{
+      if(e.key==='Enter'){ e.preventDefault(); const grp = id==='in-passion'?'passions':id==='in-skill'?'skills':'hobbies';
+        const val = el.value.trim(); if(!val) return;
+        state[grp].push(val); el.value=''; saveState(); render();
+      }
+    });
+  });
+  document.querySelectorAll('.rm-chip').forEach(btn=>{
+    btn.onclick = ()=>{
+      const group = btn.dataset.group;
+      if(group.startsWith('exp:')){
+        const key = group.slice(4);
+        state.expansionAnswers[key].splice(parseInt(btn.dataset.idx),1);
+      } else if(group.startsWith('qual:')){
+        const key = group.slice(5);
+        state.hobbyQualities[key].splice(parseInt(btn.dataset.idx),1);
+      } else {
+        state[group].splice(parseInt(btn.dataset.idx),1);
+      }
+      saveState(); render();
+    };
+  });
+
+  // expand stage: add field answer
+  document.querySelectorAll('.exp-add').forEach(btn=>{
+    btn.onclick = ()=>{
+      const key = btn.dataset.key;
+      const input = document.querySelector(`.exp-input[data-key="${cssEscape(key)}"]`);
+      const val = input.value.trim();
+      if(!val) return;
+      if(!state.expansionAnswers[key]) state.expansionAnswers[key]=[];
+      state.expansionAnswers[key].push(val);
+      saveState(); render();
+    };
+  });
+  document.querySelectorAll('.exp-input').forEach(input=>{
+    input.addEventListener('keydown', e=>{
+      if(e.key==='Enter'){ e.preventDefault();
+        const key = input.dataset.key;
+        const val = input.value.trim(); if(!val) return;
+        if(!state.expansionAnswers[key]) state.expansionAnswers[key]=[];
+        state.expansionAnswers[key].push(val);
+        saveState(); render();
+      }
+    });
+  });
+  document.querySelectorAll('.qual-add').forEach(btn=>{
+    btn.onclick = ()=>{
+      const key = btn.dataset.key;
+      const input = document.querySelector(`.qual-input[data-key="${cssEscape(key)}"]`);
+      const val = input.value.trim();
+      if(!val) return;
+      if(!state.hobbyQualities[key]) state.hobbyQualities[key]=[];
+      state.hobbyQualities[key].push(val);
+      saveState(); render();
+    };
+  });
+  document.querySelectorAll('.qual-input').forEach(input=>{
+    input.addEventListener('keydown', e=>{
+      if(e.key==='Enter'){ e.preventDefault();
+        const key = input.dataset.key;
+        const val = input.value.trim(); if(!val) return;
+        if(!state.hobbyQualities[key]) state.hobbyQualities[key]=[];
+        state.hobbyQualities[key].push(val);
+        saveState(); render();
+      }
+    });
+  });
+
+  // circle stage: status buttons + notes
+  document.querySelectorAll('.mini-btn[data-action]').forEach(btn=>{
+    btn.onclick = ()=>{
+      const round = state.rounds[state.currentRound];
+      const item = round.items.find(i=>i.id===btn.dataset.id);
+      item.status = btn.dataset.action;
+      saveState(); render();
+    };
+  });
+  document.querySelectorAll('.note-input').forEach(ta=>{
+    ta.addEventListener('change', ()=>{
+      const round = state.rounds[state.currentRound];
+      const item = round.items.find(i=>i.id===ta.dataset.id);
+      item.note = ta.value;
+      saveState();
+    });
+  });
+
+  // refine stage
+  document.querySelectorAll('.mark-final').forEach(btn=>{
+    btn.onclick = ()=>{
+      const round = state.rounds[state.currentRound];
+      const item = round.items.find(i=>i.id===btn.dataset.id);
+      const existingIdx = state.finalCandidates.findIndex(c=>c.sourceId===item.id);
+      if(existingIdx>=0){
+        state.finalCandidates.splice(existingIdx,1);
+      } else {
+        state.finalCandidates.push({id:uid(), sourceId:item.id, text:item.text});
+      }
+      saveState(); render();
+    };
+  });
+  document.querySelectorAll('.expand-more').forEach(btn=>{
+    btn.onclick = ()=>{
+      const round = state.rounds[state.currentRound];
+      const item = round.items.find(i=>i.id===btn.dataset.id);
+      // start a new round seeded from this single item
+      state.expansionAnswers = {}; // fresh phase for the new narrower round
+      state.expansionAnswers[item.text] = [];
+      state.hobbyQualities = {};
+      state.passions = []; state.skills=[item.text]; state.hobbies=[];
+      state.currentRound += 1;
+      state.stage = 'expand';
+      saveState(); render();
+      showToast('جولة توسيع جديدة حول: '+item.text);
+    };
+  });
+
+  // final stage: pick candidate
+  document.querySelectorAll('.candidate-opt').forEach(el=>{
+    el.onclick = ()=>{
+      state.finalGoalId = el.dataset.id;
+      saveState(); render();
+    };
+  });
+}
+
+function cssEscape(s){
+  return s.replace(/["\\]/g, '\\$&');
+}
+
+function goBack(){
+  const order = ['intro','setup','expand','circle','refine','final'];
+  const idx = order.indexOf(state.stage);
+  if(idx>0){ state.stage = order[idx-1]; saveState(); render(); }
+}
+
+function goNext(){
+  const order = ['intro','setup','expand','circle','refine','final'];
+  const idx = order.indexOf(state.stage);
+  if(idx<order.length-1){
+    // when leaving circle->refine, nothing special needed; when leaving setup->expand fine
+    state.stage = order[idx+1]; saveState(); render();
+  }
+}
+
+initAuth();
+</script>
+</body>
+</html>
