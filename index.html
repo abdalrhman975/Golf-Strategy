@@ -720,7 +720,7 @@ function introView(){
 function chipListHtml(list, group){
   if(!list.length) return `<div class="empty-hint">لم تُضِف شيئًا بعد</div>`;
   return `<div class="chip-row">${list.map((v,i)=>`
-    <div class="chip">${escapeHtml(v)}<button data-group="${group}" data-idx="${i}" class="rm-chip">×</button></div>
+    <div class="chip">${escapeHtml(v)}<button data-group="${escapeAttr(group)}" data-idx="${i}" class="rm-chip">×</button></div>
   `).join('')}</div>`;
 }
 
@@ -968,8 +968,6 @@ function refineView(){
 
   html += `</div>`;
 
-  const nextDisabled = state.finalCandidates.length===0 && true; // allow going forward only if there's at least one candidate OR they choose to expand further
-
   html += `
     <div class="nav-row" style="margin-top:22px">
       <button class="cta-btn secondary" id="backBtn">رجوع للدائرة</button>
@@ -1199,6 +1197,7 @@ function attachHandlers(){
       state.passions = []; state.skills=[item.text]; state.hobbies=[];
       state.currentRound += 1;
       state.stage = 'expand';
+      activeExpandTab = 'skills'; // العنصر الجديد يُزرع دائمًا في تبويب المهارات
       saveState(); render();
       showToast('جولة توسيع جديدة حول: '+item.text);
     };
@@ -1227,8 +1226,19 @@ function goNext(){
   const order = ['intro','setup','expand','circle','refine','final'];
   const idx = order.indexOf(state.stage);
   if(idx<order.length-1){
+    const nextStage = order[idx+1];
+    if(nextStage === 'expand'){
+      // إن كان التبويب النشط حاليًا فارغًا، انتقل تلقائيًا لأول تبويب فيه عناصر
+      // فعلية بدل ترك المستخدم يظن أن بياناته ضاعت.
+      const isEmpty = {passions:!state.passions.length, skills:!state.skills.length, hobbies:!state.hobbies.length};
+      if(isEmpty[activeExpandTab]){
+        if(state.passions.length) activeExpandTab='passions';
+        else if(state.skills.length) activeExpandTab='skills';
+        else if(state.hobbies.length) activeExpandTab='hobbies';
+      }
+    }
     // when leaving circle->refine, nothing special needed; when leaving setup->expand fine
-    state.stage = order[idx+1]; saveState(); render();
+    state.stage = nextStage; saveState(); render();
   }
 }
 
