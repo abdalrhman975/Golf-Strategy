@@ -280,6 +280,53 @@
     background:#FDECEC;border:1px solid #E7B8B8;color:#8E2C38;padding:14px 18px;border-radius:12px;
     font-size:.85rem;margin-bottom:20px;
   }
+
+  /* ===== category tabs ===== */
+  .tab-bar{display:flex;gap:8px;margin-bottom:22px;flex-wrap:wrap;}
+  .tab-btn{
+    display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:12px;border:1.5px solid var(--line);
+    background:var(--bg);cursor:pointer;font-family:'Tajawal';font-weight:700;font-size:.88rem;color:var(--ink-soft);
+    transition:.15s;flex:1;justify-content:center;min-width:120px;
+  }
+  .tab-btn .ic{font-size:1rem;}
+  .tab-btn .badge{
+    background:var(--line);color:var(--ink-soft);border-radius:999px;padding:1px 8px;font-size:.72rem;font-weight:800;
+  }
+  .tab-btn.active{background:var(--fairway);border-color:var(--fairway);color:#fff;}
+  .tab-btn.active .badge{background:rgba(255,255,255,.25);color:#fff;}
+  .tab-btn:not(.active):hover{border-color:var(--fairway-2);color:var(--fairway-2);}
+  @media(max-width:640px){.tab-bar{flex-direction:column;}.tab-btn{justify-content:flex-start;}}
+
+  /* ===== auth card ===== */
+  .auth-card{
+    background:var(--white);border:1px solid var(--line);border-radius:var(--radius);
+    padding:28px;box-shadow:var(--shadow);max-width:420px;margin:-46px auto 0;position:relative;z-index:2;
+  }
+  .field-group{margin-bottom:14px;}
+  .field-group label{display:block;font-size:.82rem;color:var(--ink-soft);margin-bottom:6px;font-weight:700;}
+  .field-group input{
+    width:100%;padding:11px 14px;border-radius:10px;border:1px solid var(--line);
+    font-family:'Tajawal';font-size:.95rem;background:var(--bg);color:var(--ink);
+  }
+  .field-group input:focus{outline:2px solid var(--fairway-2);outline-offset:1px;}
+  .auth-error{
+    background:#FDECEC;border:1px solid #E7B8B8;color:#8E2C38;padding:10px 14px;border-radius:10px;
+    font-size:.82rem;margin-bottom:14px;
+  }
+  .auth-submit{width:100%;margin-top:4px;}
+  .auth-forgot{
+    display:block;text-align:center;margin-top:12px;font-size:.8rem;color:var(--ink-soft);
+    background:none;border:none;cursor:pointer;font-family:'Tajawal';text-decoration:underline;
+  }
+  .auth-forgot:hover{color:var(--fairway);}
+  .auth-toggle{
+    text-align:center;margin-top:18px;padding-top:16px;border-top:1px solid var(--line);
+    font-size:.85rem;color:var(--ink-soft);
+  }
+  .auth-toggle button{
+    background:none;border:none;color:var(--fairway);font-weight:800;cursor:pointer;
+    font-family:'Tajawal';font-size:.85rem;text-decoration:underline;
+  }
 </style>
 </head>
 <body>
@@ -294,8 +341,8 @@
 /* ---------- إعداد Supabase ----------
    استبدل القيمتين التاليتين ببيانات مشروعك على supabase.com
    (Project Settings → API) */
-const SUPABASE_URL = 'https://btsneasynrkmmxdtbvma.supabase.co';       // مثال: https://xxxxx.supabase.co
-const SUPABASE_ANON_KEY = 'sb_publishable_6cypM73LDSGDMcdTXZN84w_XHMhjwZ4';
+const SUPABASE_URL = 'https://wbjixlpwjquzvypxrffo.supabase.co';       // مثال: https://xxxxx.supabase.co
+const SUPABASE_ANON_KEY = 'sb_publishable_vUoLRvUZDpxPPjrZ9f3Ntw_KPOmclP5';
 const TABLE_NAME = 'golf_sessions';
 
 let sb = null;
@@ -329,10 +376,26 @@ let state = {
 let uidCounter = 1;
 function uid(){ return 'i'+(uidCounter++)+'-'+Math.random().toString(36).slice(2,7); }
 
-/* ---------- المصادقة عبر الرابط السحري (Magic Link) ---------- */
-let currentUser = null;   // كائن المستخدم بعد تسجيل الدخول
-let authView = 'checking'; // checking | login | sent | ready
-let loginEmail = '';
+/* ---------- تبويبات الفئات (حالة عرض مؤقتة، لا تُحفظ) ---------- */
+let activeSetupTab = 'passions';
+let activeExpandTab = 'passions';
+const CATEGORY_TABS = [
+  {key:'passions', icon:'🔥', label:'الشغف'},
+  {key:'skills',   icon:'🛠️', label:'القدرات والمهارات'},
+  {key:'hobbies',  icon:'🎯', label:'الهوايات'},
+];
+function tabBarHtml(activeKey, counts, groupClass){
+  return `<div class="tab-bar">${CATEGORY_TABS.map(t=>`
+    <button class="tab-btn ${groupClass} ${t.key===activeKey?'active':''}" data-tab="${t.key}">
+      <span class="ic">${t.icon}</span> ${t.label} <span class="badge">${counts[t.key]||0}</span>
+    </button>`).join('')}</div>`;
+}
+
+/* ---------- المصادقة عبر البريد الإلكتروني وكلمة المرور ---------- */
+let currentUser = null;    // كائن المستخدم بعد تسجيل الدخول
+let authView = 'checking'; // checking | login | confirm | ready
+let authMode = 'signin';   // signin | signup
+let authError = '';
 
 async function initAuth(){
   if(!configOk){ render(); return; }
@@ -363,26 +426,68 @@ async function initAuth(){
   });
 }
 
-async function sendMagicLink(email){
-  syncStatus = 'saving';
+function authErrorMessage(e){
+  const msg = (e && e.message) || '';
+  if(msg.includes('Invalid login credentials')) return 'البريد الإلكتروني أو كلمة المرور غير صحيحة';
+  if(msg.includes('User already registered')) return 'هذا البريد مسجّل بالفعل — جرّب تسجيل الدخول بدل إنشاء حساب';
+  if(msg.includes('Password should be at least')) return 'كلمة المرور قصيرة جدًا (٦ أحرف على الأقل)';
+  if(msg.includes('Unable to validate email')) return 'صيغة البريد الإلكتروني غير صحيحة';
+  return 'حدث خطأ، تحقق من البيانات وحاول مجددًا';
+}
+
+async function signUpUser(email, password){
+  authError = ''; syncStatus = 'saving';
   try{
-    const { error } = await sb.auth.signInWithOtp({
-      email,
-      options:{ emailRedirectTo: window.location.href }
-    });
+    const { data, error } = await sb.auth.signUp({ email, password });
     if(error) throw error;
-    authView = 'sent';
+    if(data.session){
+      // تفعيل فوري (تأكيد البريد غير مفعّل في إعدادات Supabase)
+      currentUser = data.user;
+      authView = 'ready';
+      await loadState();
+      return;
+    }
+    // يحتاج تأكيد البريد
+    authView = 'confirm';
     syncStatus = 'ok';
   }catch(e){
-    console.warn('magic link failed', e);
-    showToast('تعذّر إرسال الرابط، تحقق من البريد وحاول مجددًا');
+    console.warn('signup failed', e);
+    authError = authErrorMessage(e);
     syncStatus = 'err';
   }
   render();
 }
 
+async function signInUser(email, password){
+  authError = ''; syncStatus = 'saving';
+  try{
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+    if(error) throw error;
+    currentUser = data.user;
+    authView = 'ready';
+    await loadState();
+    return;
+  }catch(e){
+    console.warn('signin failed', e);
+    authError = authErrorMessage(e);
+    syncStatus = 'err';
+  }
+  render();
+}
+
+async function sendPasswordReset(email){
+  if(!email || !email.includes('@')){ showToast('أدخل بريدك الإلكتروني أولًا'); return; }
+  try{
+    const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: window.location.href });
+    if(error) throw error;
+    showToast('أُرسل رابط إعادة تعيين كلمة المرور إلى بريدك');
+  }catch(e){
+    showToast('تعذّر إرسال رابط إعادة التعيين');
+  }
+}
+
 async function signOutUser(){
-  if(!confirm('تسجيل الخروج؟ يمكنك العودة لاحقًا بنفس البريد.')) return;
+  if(!confirm('تسجيل الخروج؟ يمكنك العودة لاحقًا بنفس البريد وكلمة المرور.')) return;
   await sb.auth.signOut();
 }
 
@@ -506,48 +611,73 @@ function authHeader(){
 }
 
 function loginView(){
-  if(authView === 'sent'){
+  if(authView === 'confirm'){
     return `
     <div class="hero">
       <div class="hero-content">
         <div class="flag-icon">📩</div>
-        <h1>تفقّد بريدك</h1>
-        <p>أرسلنا رابط دخول إلى <b>${escapeHtml(loginEmail)}</b>. افتح الرابط من نفس الجهاز لبدء أو متابعة جولتك.</p>
-        <button class="cta-btn secondary" id="backToLoginBtn">استخدام بريد آخر</button>
+        <h1>فعّل حسابك</h1>
+        <p>أنشأنا حسابك بنجاح. أرسلنا رسالة تأكيد إلى بريدك — افتحها واضغط رابط التفعيل، ثم عد وسجّل الدخول.</p>
+        <button class="cta-btn secondary" id="backToLoginBtn">العودة لتسجيل الدخول</button>
       </div>
     </div>`;
   }
+
+  const isSignup = authMode === 'signup';
   return `
-  <div class="hero">
+  <div class="hero" style="padding-bottom:90px">
     <div class="hero-content">
       <div class="flag-icon">⛳</div>
       <h1>حدّد هدفك النهائي، حفرة بعد حفرة</h1>
-      <p>سجّل الدخول ببريدك لحفظ مسارك ومتابعته من أي جهاز — بدون كلمة مرور.</p>
-      <div class="tag-input-row" style="max-width:360px">
-        <input id="loginEmailInput" type="email" placeholder="بريدك الإلكتروني" />
-        <button class="add-btn" id="sendLinkBtn">↵</button>
-      </div>
-      <button class="cta-btn" id="sendLinkBtn2" style="margin-top:12px">أرسل رابط الدخول</button>
+      <p>سجّل الدخول لحفظ مسارك ومتابعته من أي جهاز.</p>
+    </div>
+  </div>
+  <div class="auth-card">
+    <h2 style="margin:0 0 16px;font-size:1.15rem;color:var(--fairway);text-align:center">
+      ${isSignup ? 'إنشاء حساب جديد' : 'تسجيل الدخول'}
+    </h2>
+    ${authError ? `<div class="auth-error">${escapeHtml(authError)}</div>` : ''}
+    <div class="field-group">
+      <label>البريد الإلكتروني</label>
+      <input id="authEmail" type="email" placeholder="name@example.com" autocomplete="username" />
+    </div>
+    <div class="field-group">
+      <label>كلمة المرور</label>
+      <input id="authPassword" type="password" placeholder="٦ أحرف على الأقل" autocomplete="${isSignup?'new-password':'current-password'}" />
+    </div>
+    <button class="cta-btn auth-submit" id="authSubmitBtn">${isSignup ? 'إنشاء الحساب' : 'تسجيل الدخول'}</button>
+    ${!isSignup ? `<button class="auth-forgot" id="forgotPasswordBtn">نسيت كلمة المرور؟</button>` : ''}
+    <div class="auth-toggle">
+      ${isSignup ? 'لديك حساب بالفعل؟' : 'ليس لديك حساب؟'}
+      <button id="toggleAuthModeBtn">${isSignup ? 'سجّل الدخول' : 'أنشئ حسابًا'}</button>
     </div>
   </div>`;
 }
 
 function attachAuthHandlers(){
-  const send = ()=>{
-    const input = document.getElementById('loginEmailInput');
-    const val = input.value.trim();
-    if(!val || !val.includes('@')){ showToast('أدخل بريدًا إلكترونيًا صحيحًا'); return; }
-    loginEmail = val;
-    sendMagicLink(val);
+  const submit = ()=>{
+    const email = document.getElementById('authEmail').value.trim();
+    const password = document.getElementById('authPassword').value;
+    if(!email || !email.includes('@')){ authError='أدخل بريدًا إلكترونيًا صحيحًا'; render(); return; }
+    if(password.length < 6){ authError='كلمة المرور يجب أن تكون ٦ أحرف على الأقل'; render(); return; }
+    if(authMode === 'signup') signUpUser(email, password);
+    else signInUser(email, password);
   };
-  const btn1 = document.getElementById('sendLinkBtn');
-  if(btn1) btn1.onclick = send;
-  const btn2 = document.getElementById('sendLinkBtn2');
-  if(btn2) btn2.onclick = send;
-  const input = document.getElementById('loginEmailInput');
-  if(input) input.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); send(); } });
+  const submitBtn = document.getElementById('authSubmitBtn');
+  if(submitBtn) submitBtn.onclick = submit;
+  ['authEmail','authPassword'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); submit(); } });
+  });
+  const toggle = document.getElementById('toggleAuthModeBtn');
+  if(toggle) toggle.onclick = ()=>{ authMode = authMode==='signup' ? 'signin' : 'signup'; authError=''; render(); };
+  const forgot = document.getElementById('forgotPasswordBtn');
+  if(forgot) forgot.onclick = ()=>{
+    const email = document.getElementById('authEmail').value.trim();
+    sendPasswordReset(email);
+  };
   const back = document.getElementById('backToLoginBtn');
-  if(back) back.onclick = ()=>{ authView='login'; render(); };
+  if(back) back.onclick = ()=>{ authView='login'; authMode='signin'; authError=''; render(); };
 }
 
 function body(){
@@ -596,47 +726,55 @@ function chipListHtml(list, group){
 
 function setupView(){
   const total = state.passions.length + state.skills.length + state.hobbies.length;
+  const counts = {passions:state.passions.length, skills:state.skills.length, hobbies:state.hobbies.length};
+
+  const blocks = {
+    passions: `
+      <div class="category-block">
+        <div class="category-head">
+          <div class="cat-icon passion">🔥</div>
+          <div><h3>الشغف</h3><p>الأشياء التي تحمّسك وتشعر تجاهها بحماس حقيقي</p></div>
+        </div>
+        <div class="tag-input-row">
+          <input id="in-passion" placeholder="مثال: الكتابة، مساعدة الناس، التصميم" />
+          <button class="add-btn" data-group="passions">+</button>
+        </div>
+        ${chipListHtml(state.passions,'passions')}
+      </div>`,
+    skills: `
+      <div class="category-block">
+        <div class="category-head">
+          <div class="cat-icon skill">🛠️</div>
+          <div><h3>القدرات والمهارات</h3><p>ما تُتقنه فعلًا أو تتعلمه بسرعة أكبر من غيرك</p></div>
+        </div>
+        <div class="tag-input-row">
+          <input id="in-skill" placeholder="مثال: التنظيم، البرمجة، الإقناع" />
+          <button class="add-btn" data-group="skills">+</button>
+        </div>
+        ${chipListHtml(state.skills,'skills')}
+      </div>`,
+    hobbies: `
+      <div class="category-block">
+        <div class="category-head">
+          <div class="cat-icon hobby">🎯</div>
+          <div><h3>الهوايات</h3><p>ما تفعله لأجل المتعة وحدها</p></div>
+        </div>
+        <div class="tag-input-row">
+          <input id="in-hobby" placeholder="مثال: القراءة، كرة القدم، الطبخ" />
+          <button class="add-btn" data-group="hobbies">+</button>
+        </div>
+        ${chipListHtml(state.hobbies,'hobbies')}
+      </div>`,
+  };
+
   return `
   <div class="panel">
     <div class="eyebrow">الحفرة ١</div>
     <h2>ما شغفك، ومهاراتك، وهواياتك؟</h2>
     <p class="sub">أضف عدة عناصر لكل قائمة. لا حاجة للكمال الآن — يمكنك التعديل لاحقًا.</p>
 
-    <div class="category-block">
-      <div class="category-head">
-        <div class="cat-icon passion">🔥</div>
-        <div><h3>الشغف</h3><p>الأشياء التي تحمّسك وتشعر تجاهها بحماس حقيقي</p></div>
-      </div>
-      <div class="tag-input-row">
-        <input id="in-passion" placeholder="مثال: الكتابة، مساعدة الناس، التصميم" />
-        <button class="add-btn" data-group="passions">+</button>
-      </div>
-      ${chipListHtml(state.passions,'passions')}
-    </div>
-
-    <div class="category-block">
-      <div class="category-head">
-        <div class="cat-icon skill">🛠️</div>
-        <div><h3>القدرات والمهارات</h3><p>ما تُتقنه فعلًا أو تتعلمه بسرعة أكبر من غيرك</p></div>
-      </div>
-      <div class="tag-input-row">
-        <input id="in-skill" placeholder="مثال: التنظيم، البرمجة، الإقناع" />
-        <button class="add-btn" data-group="skills">+</button>
-      </div>
-      ${chipListHtml(state.skills,'skills')}
-    </div>
-
-    <div class="category-block">
-      <div class="category-head">
-        <div class="cat-icon hobby">🎯</div>
-        <div><h3>الهوايات</h3><p>ما تفعله لأجل المتعة وحدها</p></div>
-      </div>
-      <div class="tag-input-row">
-        <input id="in-hobby" placeholder="مثال: القراءة، كرة القدم، الطبخ" />
-        <button class="add-btn" data-group="hobbies">+</button>
-      </div>
-      ${chipListHtml(state.hobbies,'hobbies')}
-    </div>
+    ${tabBarHtml(activeSetupTab, counts, 'setup-tab')}
+    ${blocks[activeSetupTab]}
 
     <div class="nav-row">
       <button class="cta-btn secondary" id="backBtn">رجوع</button>
@@ -652,73 +790,87 @@ function setupView(){
 // phase2: each collected quality -> "ما هي المجالات التي فيها X؟" (only shown once qualities exist)
 
 function expandView(){
-  const phase1Items = [...state.passions.map(p=>({label:p,type:'شغف'})), ...state.skills.map(s=>({label:s,type:'مهارة'}))];
-  const hobbyItems = state.hobbies;
+  const allQualities = [...new Set(Object.values(state.hobbyQualities).flat())];
 
-  const allQualities = [];
-  Object.values(state.hobbyQualities).forEach(arr=>allQualities.push(...arr));
-  const uniqueQualities = [...new Set(allQualities)];
+  function countAnswers(items){
+    return items.reduce((sum,l)=> sum + ((state.expansionAnswers[l]||[]).length), 0);
+  }
+  const hobbyQualCount = state.hobbies.reduce((s,h)=> s + ((state.hobbyQualities[h]||[]).length), 0);
+  const counts = {
+    passions: countAnswers(state.passions),
+    skills: countAnswers(state.skills),
+    hobbies: hobbyQualCount + countAnswers(allQualities),
+  };
 
-  let html = `<div class="panel">
-    <div class="eyebrow">الحفرة ٢</div>
-    <h2>وسّع كل عنصر إلى مجالات</h2>
-    <p class="sub">أجب عن الأسئلة أدناه بكل ما يخطر ببالك — لا تُفلتر نفسك الآن، الفلترة تأتي في الدائرة.</p>`;
-
-  html += `<div class="expand-phase-title">🔥 الشغف والمهارات: ما المجالات التي فيها هذا؟</div>`;
-  phase1Items.forEach(({label,type})=>{
+  function fieldCard(label, typeLabel){
     const answers = state.expansionAnswers[label] || [];
-    html += `
+    return `
     <div class="expand-card">
-      <div class="q">ما هي المجالات التي فيها <b>${escapeHtml(label)}</b>؟ <span style="color:var(--ink-soft);font-weight:400">(${type})</span></div>
+      <div class="q">ما هي المجالات التي فيها <b>${escapeHtml(label)}</b>؟${typeLabel?` <span style="color:var(--ink-soft);font-weight:400">(${typeLabel})</span>`:''}</div>
       <div class="tag-input-row">
         <input class="exp-input" data-key="${escapeAttr(label)}" placeholder="اكتب مجالًا واضغط إضافة" />
         <button class="add-btn exp-add" data-key="${escapeAttr(label)}">+</button>
       </div>
       ${chipListHtml(answers, 'exp:'+label)}
     </div>`;
-  });
+  }
 
-  html += `<div class="expand-phase-title">🎯 الهوايات: ما الصفات التي تحبها فيها؟</div>`;
-  hobbyItems.forEach(hobby=>{
-    const quals = state.hobbyQualities[hobby] || [];
-    html += `
-    <div class="expand-card">
-      <div class="q">ما هي الصفات التي أحبها في <b>${escapeHtml(hobby)}</b>؟</div>
-      <div class="tag-input-row">
-        <input class="qual-input" data-key="${escapeAttr(hobby)}" placeholder="اكتب صفة واضغط إضافة" />
-        <button class="add-btn qual-add" data-key="${escapeAttr(hobby)}">+</button>
-      </div>
-      ${chipListHtml(quals, 'qual:'+hobby)}
-    </div>`;
-  });
+  function emptyTabMsg(msg){
+    return `<p class="sub" style="margin-top:4px">${msg}</p>`;
+  }
 
-  if(uniqueQualities.length){
-    html += `<div class="expand-phase-title">↩️ والآن أعِد السؤال الأول على هذه الصفات</div>`;
-    uniqueQualities.forEach(q=>{
-      const answers = state.expansionAnswers[q] || [];
-      html += `
-      <div class="expand-card">
-        <div class="q">ما هي المجالات التي فيها <b>${escapeHtml(q)}</b>؟</div>
-        <div class="tag-input-row">
-          <input class="exp-input" data-key="${escapeAttr(q)}" placeholder="اكتب مجالًا واضغط إضافة" />
-          <button class="add-btn exp-add" data-key="${escapeAttr(q)}">+</button>
-        </div>
-        ${chipListHtml(answers, 'exp:'+q)}
-      </div>`;
-    });
-  } else if(hobbyItems.length){
-    html += `<p class="sub" style="margin-top:10px">بعد إضافة صفات للهوايات، ستظهر هنا أسئلة جديدة تلقائيًا.</p>`;
+  let tabBody;
+  if(activeExpandTab === 'passions'){
+    tabBody = state.passions.length
+      ? state.passions.map(p=>fieldCard(p,'شغف')).join('')
+      : emptyTabMsg('لم تُضِف أي عنصر في الشغف بعد. ارجع للحفرة ١ لإضافة بعض.');
+  } else if(activeExpandTab === 'skills'){
+    tabBody = state.skills.length
+      ? state.skills.map(s=>fieldCard(s,'مهارة')).join('')
+      : emptyTabMsg('لم تُضِف أي عنصر في القدرات والمهارات بعد. ارجع للحفرة ١ لإضافة بعض.');
+  } else {
+    if(!state.hobbies.length){
+      tabBody = emptyTabMsg('لم تُضِف أي هواية بعد. ارجع للحفرة ١ لإضافة بعض.');
+    } else {
+      let h = `<div class="expand-phase-title">🎯 ما الصفات التي تحبها في كل هواية؟</div>`;
+      h += state.hobbies.map(hobby=>{
+        const quals = state.hobbyQualities[hobby] || [];
+        return `
+        <div class="expand-card">
+          <div class="q">ما هي الصفات التي أحبها في <b>${escapeHtml(hobby)}</b>؟</div>
+          <div class="tag-input-row">
+            <input class="qual-input" data-key="${escapeAttr(hobby)}" placeholder="اكتب صفة واضغط إضافة" />
+            <button class="add-btn qual-add" data-key="${escapeAttr(hobby)}">+</button>
+          </div>
+          ${chipListHtml(quals, 'qual:'+hobby)}
+        </div>`;
+      }).join('');
+
+      if(allQualities.length){
+        h += `<div class="expand-phase-title">↩️ أعِد السؤال الأول على هذه الصفات</div>`;
+        h += allQualities.map(q=>fieldCard(q,'')).join('');
+      } else {
+        h += emptyTabMsg('بعد إضافة صفات، ستظهر هنا أسئلة جديدة تلقائيًا.');
+      }
+      tabBody = h;
+    }
   }
 
   const poolCount = buildPool().length;
-  html += `
+  return `<div class="panel">
+    <div class="eyebrow">الحفرة ٢</div>
+    <h2>وسّع كل عنصر إلى مجالات</h2>
+    <p class="sub">أجب عن الأسئلة أدناه بكل ما يخطر ببالك — لا تُفلتر نفسك الآن، الفلترة تأتي في الدائرة.</p>
+
+    ${tabBarHtml(activeExpandTab, counts, 'expand-tab')}
+    ${tabBody}
+
     <div class="nav-row">
       <button class="cta-btn secondary" id="backBtn">رجوع</button>
       <div class="spacer"></div>
       <button class="cta-btn" id="nextBtn" ${poolCount===0?'disabled':''}>التالي: الدائرة (${poolCount} عنصرًا) →</button>
     </div>
   </div>`;
-  return html;
 }
 
 function buildPool(){
@@ -912,6 +1064,14 @@ function attachHandlers(){
 
   const unpickBtn = document.getElementById('unpickBtn');
   if(unpickBtn) unpickBtn.onclick = ()=>{ state.finalGoalId=null; saveState(); render(); };
+
+  // category tabs (setup + expand views)
+  document.querySelectorAll('.tab-btn.setup-tab[data-tab]').forEach(btn=>{
+    btn.onclick = ()=>{ activeSetupTab = btn.dataset.tab; render(); };
+  });
+  document.querySelectorAll('.tab-btn.expand-tab[data-tab]').forEach(btn=>{
+    btn.onclick = ()=>{ activeExpandTab = btn.dataset.tab; render(); };
+  });
 
   // setup stage: add chip
   document.querySelectorAll('.add-btn[data-group]').forEach(btn=>{
